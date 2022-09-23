@@ -37,16 +37,17 @@ ballot(Name, Round, Proposal, Acceptors, PanelId) ->
   prepare(Round, Acceptors),
   Quorum = (length(Acceptors) div 2) + 1,
   MaxVoted = order:null(),
+  %Maybe len/2+1
   case collect(length(Acceptors), Round, MaxVoted, Proposal) of
     {accepted, Value} ->
       io:format("[Proposer ~w] Phase 2: round ~w proposal ~w (was ~w)~n", 
                  [Name, Round, Value, Proposal]),
       % update gui
       PanelId ! {updateProp, "Round: " ++ io_lib:format("~p", [Round]), Value},
-      accept(..., ..., ...),
-      case vote(Quorum, ...) of
+      accept(Round, Value, Acceptors),
+      case vote(Quorum, Round) of
         ok ->
-          {ok, ...};
+          {ok, Value};
         abort ->
           abort
       end;
@@ -82,11 +83,11 @@ vote(0, _) ->
 vote(N, Round) ->
   receive
     {vote, Round} ->
-      vote(..., ...);
+      vote(N-1, Round);
     {vote, _} ->
       vote(N, Round);
     {sorry, {accept, Round}} ->
-      vote(..., ...);
+      vote(N, Round);
     {sorry, _} ->
       vote(N, Round)
   after ?timeout ->

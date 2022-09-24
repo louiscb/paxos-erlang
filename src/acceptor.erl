@@ -25,7 +25,9 @@ acceptor(Name, Promised, Voted, Value, PanelId) ->
           acceptor(Name, Round, Voted, Value, PanelId);
         false ->
           Proposer ! {sorry, {prepare, Round}},
-          acceptor(Name, Round, Voted, Value, PanelId)
+	  % It is wrong to pass Round here as it is smaller than Promised
+	  % acceptor(Name, Round, Voted, Value, PanelId)
+          acceptor(Name, Promised, Voted, Value, PanelId)
       end;
     {accept, Proposer, Round, Proposal} ->
       case order:goe(Round, Promised) of

@@ -5,11 +5,22 @@
 -define(BLUE, {0,0,255}).
 -define(GREEN, {0,255,0}).
 
+-define(paxy_acc_node, 'acc@philipp-hpprobook430g4').
+
+get_remote_info(RegNames, HostName) ->
+  case RegNames of
+    [] ->
+      [];
+    [RegName|Rest] ->
+      [{RegName, HostName} | get_remote_info(Rest, HostName)]
+  end.
+
 % Sleep is a list with the initial sleep time for each proposer
 start(Sleep) ->
   AcceptorNames = ["Acceptor a", "Acceptor b", "Acceptor c", "Acceptor d", 
                    "Acceptor e"],
   AccRegister = [a, b, c, d, e],
+  AccRemoteInfos = get_remote_info(AccRegister, ?paxy_acc_node),
   ProposerNames = [{"Proposer kurtz", ?RED}, {"Proposer kilgore", ?GREEN}, 
                    {"Proposer willard", ?BLUE}],
   PropInfo = [{kurtz, ?RED}, {kilgore, ?GREEN}, {willard, ?BLUE}],
@@ -21,7 +32,7 @@ start(Sleep) ->
       start_acceptors(AccIds, AccRegister),
       spawn(fun() -> 
         Begin = erlang:monotonic_time(),
-        start_proposers(PropIds, PropInfo, AccRegister, Sleep, self()),
+        start_proposers(PropIds, PropInfo, AccRemoteInfos, Sleep, self()),
         wait_proposers(length(PropIds)),
         End = erlang:monotonic_time(),
         Elapsed = erlang:convert_time_unit(End-Begin, native, millisecond),
@@ -35,7 +46,7 @@ start_acceptors(AccIds, AccReg) ->
       ok;
     [AccId|Rest] ->
       [RegName|RegNameRest] = AccReg,
-      register(RegName, acceptor:start(RegName, AccId)),
+      spawn(?paxy_acc_node, fun() -> register(RegName, acceptor:start(RegName, AccId)) end),
       start_acceptors(Rest, RegNameRest)
   end.
 

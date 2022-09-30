@@ -6,6 +6,7 @@
 -define(GREEN, {0,255,0}).
 
 -define(paxy_acc_node, 'acc@philipp-hpprobook430g4').
+-define(paxy_pro_node, 'pro@philipp-hpprobook430g4').
 
 get_remote_info(RegNames, HostName) ->
   case RegNames of
@@ -57,7 +58,7 @@ start_proposers(PropIds, PropInfo, Acceptors, Sleep, Main) ->
     [PropId|Rest] ->
       [{RegName, Colour}|RestInfo] = PropInfo,
       [FirstSleep|RestSleep] = Sleep,
-      proposer:start(RegName, Colour, Acceptors, FirstSleep, PropId, Main),	
+      spawn(?paxy_pro_node, fun() -> register(RegName, proposer:start(RegName, Colour, Acceptors, FirstSleep, PropId, Main)) end),
       start_proposers(Rest, RestInfo, Acceptors, RestSleep, Main)
   end.
 

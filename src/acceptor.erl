@@ -5,10 +5,21 @@ start(Name, PanelId) ->
   spawn(fun() -> init(Name, PanelId) end).
 
 init(Name, PanelId) ->
-  Promised = order:null(),
-  Voted = order:null(),
-  Value = na,
-  acceptor(Name, Promised, Voted, Value, PanelId).
+  case filelib:is_regular(Name) of
+    true ->
+      pers:open(Name),
+      {Promised, Voted, Value, PanelIdOriginal} = pers:read(Name),
+      pers:close(Name),
+      Colour = case Value of na -> {0,0,0}; _ -> Value end,
+      PanelIdOriginal !
+        {updateAcc, "Voted: " ++ io_lib:format("~p", [Promised]), "Promised: " ++ io_lib:format("~p", [Promised]), Colour},
+      acceptor(Name, Promised, Voted, Value, PanelIdOriginal);
+    false ->
+      Promised = order:null(),
+      Voted = order:null(),
+      Value = na,
+      acceptor(Name, Promised, Voted, Value, PanelId)
+  end.
 
 acceptor(Name, Promised, Voted, Value, PanelId) ->
   receive
@@ -16,6 +27,10 @@ acceptor(Name, Promised, Voted, Value, PanelId) ->
       case order:gr(Round, Promised) of
         true ->
           Proposer ! {promise, Round, Voted, Value},
+
+          % Persist the state in case of crashes
+          save_state(Name, Round, Voted, Value, PanelId),
+
           io:format("[Acceptor ~w] Phase 1: promised ~w voted ~w colour ~w~n",
             [Name, Round, Voted, Value]),
           % Update gui
@@ -25,7 +40,9 @@ acceptor(Name, Promised, Voted, Value, PanelId) ->
           acceptor(Name, Round, Voted, Value, PanelId);
         false ->
           Proposer ! {sorry, {prepare, Round}},
-          acceptor(Name, Round, Voted, Value, PanelId)
+          % It is wrong to pass Round here as it is smaller than Promised
+          % acceptor(Name, Round, Voted, Value, PanelId)
+          acceptor(Name, Promised, Voted, Value, PanelId)
       end;
     {accept, Proposer, Round, Proposal} ->
       case order:goe(Round, Promised) of
@@ -48,5 +65,14 @@ acceptor(Name, Promised, Voted, Value, PanelId) ->
       end;
     stop ->
       PanelId ! stop,
+      delete_state(Name),
       ok
   end.
+
+save_state(Name, Round, Voted, Value, PanelId) ->
+  pers:open(Name),
+  pers:store(Name, Round, Voted, Value, PanelId),
+  pers:close(Name).
+
+delete_state(Name) ->
+  pers:delete(Name).

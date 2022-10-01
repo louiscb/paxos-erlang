@@ -71,19 +71,23 @@ wait_proposers(N) ->
   end.
 
 stop() ->
-  stop(a),
-  stop(b),
-  stop(c),
-  stop(d),
-  stop(e),
+  stop({a, ?paxy_acc_node}),
+  stop({b, ?paxy_acc_node}),
+  stop({c, ?paxy_acc_node}),
+  stop({d, ?paxy_acc_node}),
+  stop({e, ?paxy_acc_node}),
   stop(gui).
 
 stop(Name) ->
-  case whereis(Name) of
-    undefined ->
-      ok;
-    Pid ->
-      Pid ! stop
+  case Name of
+    {RegName, Node} -> 
+      {RegName, Node} ! stop;
+    _ ->
+      case whereis(Name) of
+        undefined ->
+          ok;
+        Pid ->
+          Pid ! stop
+      end
   end.
 
- 

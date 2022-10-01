@@ -37,8 +37,8 @@ ballot(Name, Round, Proposal, Acceptors, PanelId) ->
   prepare(Round, Acceptors),
   Quorum = (length(Acceptors) div 2) + 1,
   MaxVoted = order:null(),
-  %Maybe len/2+1
-  case collect(length(Acceptors), Round, MaxVoted, Proposal) of
+  %Maybe len/2+1: yes, should be better. Otherwise we might waste time
+  case collect(Quorum, Round, MaxVoted, Proposal) of
     {accepted, Value} ->
       io:format("[Proposer ~w] Phase 2: round ~w proposal ~w (was ~w)~n",
         [Name, Round, Value, Proposal]),
@@ -71,7 +71,7 @@ collect(N, Round, MaxVoted, Proposal) ->
     {promise, _, _,  _} ->
       collect(N, Round, MaxVoted, Proposal);
     {sorry, {prepare, Round}} ->
-      collect(N, Round, MaxVoted, Proposal);
+      collect(N, Round, MaxVoted, Proposal); % possible optimization: abort here because an acceptor has responded to a prepare with a higher number (see paper)
     {sorry, _} ->
       collect(N, Round, MaxVoted, Proposal)
   after ?timeout ->
@@ -87,7 +87,7 @@ vote(N, Round) ->
     {vote, _} ->
       vote(N, Round);
     {sorry, {accept, Round}} ->
-      vote(N, Round);
+      vote(N, Round); % Should we also abort here? Would that make things faster?
     {sorry, _} ->
       vote(N, Round)
   after ?timeout ->
@@ -107,4 +107,13 @@ accept(Round, Proposal, Acceptors) ->
   lists:foreach(Fun, Acceptors).
 
 send(Name, Message) ->
-  Name ! Message.
+  if is_tuple(Name) -> %remote
+    Name ! Message;
+  true -> %local
+    case whereis(Name) of
+      undefined ->
+        down;
+      Pid ->
+        Pid ! Message
+    end
+  end.

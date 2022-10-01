@@ -1,5 +1,5 @@
 -module(paxy).
--export([start/1, stop/0, stop/1]).
+-export([start/1, stop/0, stop/1, crash/1]).
 
 -define(RED, {255,0,0}).
 -define(BLUE, {0,0,255}).
@@ -8,8 +8,9 @@
 % Sleep is a list with the initial sleep time for each proposer
 start(Sleep) ->
   AcceptorNames = ["Acceptor a", "Acceptor b", "Acceptor c", "Acceptor d", 
-                   "Acceptor e"],
-  AccRegister = [a, b, c, d, e],
+                   "Acceptor e", "Acceptor f", "Acceptor g", "Acceptor h",
+                   "Acceptor i", "Acceptor j", "Acceptor k", "Acceptor l"],
+  AccRegister = [a, b, c, d, e, f, g, h, i, j, k, l],
   ProposerNames = [{"Proposer kurtz", ?RED}, {"Proposer kilgore", ?GREEN}, 
                    {"Proposer willard", ?BLUE}],
   PropInfo = [{kurtz, ?RED}, {kilgore, ?GREEN}, {willard, ?BLUE}],
@@ -64,6 +65,13 @@ stop() ->
   stop(c),
   stop(d),
   stop(e),
+  stop(f),
+  stop(g),
+  stop(h),
+  stop(i),
+  stop(j),
+  stop(k),
+  stop(l),
   stop(gui).
 
 stop(Name) ->
@@ -74,4 +82,18 @@ stop(Name) ->
       Pid ! stop
   end.
 
+crash(Name) ->
+  case whereis(Name) of
+    undefined ->
+      ok;
+    Pid ->
+      pers:open(Name),
+      {_, _, _, Pn} = pers:read(Name),
+      Pn ! {updateAcc, "Voted: CRASHED", "Promised: CRASHED", {0,0,0}},
+      pers:close(Name),
+      unregister(Name),
+      exit(Pid, "crash"),
+  %%      timer:sleep(3000),
+      register(Name, acceptor:start(Name, na))
+  end.
  

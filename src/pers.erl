@@ -9,18 +9,20 @@ open(Name) ->
 %% returns the object with the key 'perm' stored in the table 'Name'
 read(Name) ->
     case dets:lookup(Name, perm) of
-        [{perm, Pr, Vt, Ac, Pn}] ->
-            {Pr, Vt, Ac, Pn};
+        [{perm, Promised, Voted, Value, PanelId}] ->
+            {Promised, Voted, Value, PanelId};
         [] ->
             {order:null(), order:null(), na, na}
     end.
 
 %% inserts one object {Pr, Vt, Ac, Pn} into the table 'Name'
-store(Name, Pr, Vt, Ac, Pn)->
-    dets:insert(Name, {perm, Pr, Vt, Ac, Pn}).
+store(Name, Promised, Voted, Value, PanelId)->
+    dets:insert(Name, {perm, Promised, Voted, Value, PanelId}).
 
 close(Name) ->
     dets:close(Name).
 
 delete(Name) ->
     file:delete(Name).
+
+

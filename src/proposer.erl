@@ -38,14 +38,14 @@ ballot(Name, Round, Proposal, Acceptors, PanelId) ->
   Quorum = (length(Acceptors) div 2) + 1,
   MaxVoted = order:null(),
   %Maybe len/2+1: yes, should be better. Otherwise we might waste time
-  case collect(Quorum, Round, MaxVoted, Proposal) of
+  case collect(Quorum, Round, MaxVoted, Proposal, 0) of
     {accepted, Value} ->
       io:format("[Proposer ~w] Phase 2: round ~w proposal ~w (was ~w)~n",
         [Name, Round, Value, Proposal]),
       % update gui
       PanelId ! {updateProp, "Round: " ++ io_lib:format("~p", [Round]), Value},
       accept(Round, Value, Acceptors),
-      case vote(Quorum, Round) of
+      case vote(Quorum, Round, 0) of
         ok ->
           {ok, Value};
         abort ->
@@ -55,41 +55,45 @@ ballot(Name, Round, Proposal, Acceptors, PanelId) ->
       abort
   end.
 
-collect(0, _, _, Proposal) ->
+collect(0, _, _, Proposal, _) ->
   {accepted, Proposal};
-collect(N, Round, MaxVoted, Proposal) ->
+collect(_, _, _, _, 3) ->
+  abort;
+collect(N, Round, MaxVoted, Proposal, RejectedPromises) ->
   receive
     {promise, Round, _, na} ->
-      collect(N-1, Round, MaxVoted, Proposal);
+      collect(N-1, Round, MaxVoted, Proposal, RejectedPromises);
     {promise, Round, Voted, Value} ->
       case order:gr(Voted, MaxVoted) of
         true ->
-          collect(N-1, Round, Voted, Value);
+          collect(N-1, Round, Voted, Value, RejectedPromises);
         false ->
-          collect(N-1, Round, MaxVoted, Proposal)
+          collect(N-1, Round, MaxVoted, Proposal, RejectedPromises)
       end;
     {promise, _, _,  _} ->
-      collect(N, Round, MaxVoted, Proposal);
+      collect(N, Round, MaxVoted, Proposal, RejectedPromises);
     {sorry, {prepare, Round}} ->
-      collect(N, Round, MaxVoted, Proposal); % possible optimization: abort here because an acceptor has responded to a prepare with a higher number (see paper)
+      collect(N, Round, MaxVoted, Proposal, RejectedPromises+1);
     {sorry, _} ->
-      collect(N, Round, MaxVoted, Proposal)
+      collect(N, Round, MaxVoted, Proposal, RejectedPromises)
   after ?timeout ->
     abort
   end.
 
-vote(0, _) ->
+vote(0, _, _) ->
   ok;
-vote(N, Round) ->
+vote(_, _, 3) ->
+  abort;
+vote(N, Round, RejectedVotes) ->
   receive
     {vote, Round} ->
-      vote(N-1, Round);
+      vote(N-1, Round, RejectedVotes);
     {vote, _} ->
-      vote(N, Round);
+      vote(N, Round, RejectedVotes);
     {sorry, {accept, Round}} ->
-      vote(N, Round); % Should we also abort here? Would that make things faster?
+      vote(N, Round, RejectedVotes+1);
     {sorry, _} ->
-      vote(N, Round)
+      vote(N, Round, RejectedVotes)
   after ?timeout ->
     abort
   end.

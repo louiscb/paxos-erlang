@@ -5,8 +5,8 @@
 -define(BLUE, {0,0,255}).
 -define(GREEN, {0,255,0}).
 
--define(paxy_acc_node, 'acc@philipp-hpprobook430g4').
--define(paxy_pro_node, 'pro@philipp-hpprobook430g4').
+-define(paxy_acc_node, 'acc@127.0.0.1').
+-define(paxy_pro_node, 'pro@127.0.0.1').
 
 get_remote_info(RegNames, HostName) ->
   case RegNames of

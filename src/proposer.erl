@@ -3,6 +3,8 @@
 
 -define(timeout, 2000).
 -define(backoff, 10).
+-define(enable_proposer_opt, true).
+-define(max_rejected, 3).
 
 start(Name, Proposal, Acceptors, Sleep, PanelId, Main) ->
   spawn(fun() -> init(Name, Proposal, Acceptors, Sleep, PanelId, Main) end).
@@ -57,7 +59,7 @@ ballot(Name, Round, Proposal, Acceptors, PanelId) ->
 
 collect(0, _, _, Proposal, _) ->
   {accepted, Proposal};
-collect(_, _, _, _, 3) ->
+collect(_, Round, _, _, ?max_rejected) ->
   abort;
 collect(N, Round, MaxVoted, Proposal, RejectedPromises) ->
   receive
@@ -73,7 +75,12 @@ collect(N, Round, MaxVoted, Proposal, RejectedPromises) ->
     {promise, _, _,  _} ->
       collect(N, Round, MaxVoted, Proposal, RejectedPromises);
     {sorry, {prepare, Round}} ->
-      collect(N, Round, MaxVoted, Proposal, RejectedPromises+1);
+      if
+        ?enable_proposer_opt ->
+          collect(N, Round, MaxVoted, Proposal, RejectedPromises+1);
+	true ->
+          collect(N, Round, MaxVoted, Proposal, RejectedPromises)
+      end;
     {sorry, _} ->
       collect(N, Round, MaxVoted, Proposal, RejectedPromises)
   after ?timeout ->

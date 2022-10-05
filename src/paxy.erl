@@ -58,7 +58,7 @@ start_proposers(PropIds, PropInfo, Acceptors, Sleep, Main) ->
     [PropId|Rest] ->
       [{RegName, Colour}|RestInfo] = PropInfo,
       [FirstSleep|RestSleep] = Sleep,
-      spawn(?paxy_pro_node, fun() -> register(RegName, proposer:start(RegName, Colour, Acceptors, FirstSleep, PropId, Main)) end),
+      spawn(?paxy_pro_node, fun() -> proposer:start(RegName, Colour, Acceptors, FirstSleep, PropId, Main) end),
       start_proposers(Rest, RestInfo, Acceptors, RestSleep, Main)
   end.
 

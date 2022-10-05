@@ -59,7 +59,7 @@ ballot(Name, Round, Proposal, Acceptors, PanelId) ->
 
 collect(0, _, _, Proposal, _) ->
   {accepted, Proposal};
-collect(_, Round, _, _, ?max_rejected) ->
+collect(_, _, _, _, ?max_rejected) ->
   abort;
 collect(N, Round, MaxVoted, Proposal, RejectedPromises) ->
   receive

@@ -89,7 +89,7 @@ collect(N, Round, MaxVoted, Proposal, RejectedPromises) ->
 
 vote(0, _, _) ->
   ok;
-vote(_, _, 3) ->
+vote(_, _, ?max_rejected) ->
   abort;
 vote(N, Round, RejectedVotes) ->
   receive
@@ -98,7 +98,12 @@ vote(N, Round, RejectedVotes) ->
     {vote, _} ->
       vote(N, Round, RejectedVotes);
     {sorry, {accept, Round}} ->
-      vote(N, Round, RejectedVotes+1);
+      if
+        ?enable_proposer_opt ->
+          vote(N, Round, RejectedVotes+1);
+	true ->
+          vote(N, Round, RejectedVotes)
+      end;
     {sorry, _} ->
       vote(N, Round, RejectedVotes)
   after ?timeout ->
